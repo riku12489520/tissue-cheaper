@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>省錢買衛生紙</title>
+</head>
+<body>
+  <div id="app">
+    <div class="max-w-[1280px] p-4">
+      <div class="relative overflow-x-auto border border-blue-300 rounded-md p-4">
+        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead>
+            <tr class="border-b border-blue-200">
+              <th v-for="title in titles" :key="title" class="pb-2 px-2">{{ title }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in list" :key="index" class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+              <td class="px-2 py-4">
+                <input v-model="item.name" class="">
+              </td>
+              <td class="px-2 py-4">
+                <div v-if="item.isEdit" class="flex">
+                  <input type="number" v-model.number="item.rewards" class="whitespace-nowrap">
+                  <button class="mx-2 border bg-cyan-200 whitespace-nowrap p-2 rounded-md" @click="toggleEditRewards(item)">確定</button>
+                </div>
+                <span v-else class="cursor-pointer" @click="toggleEditRewards(item)">{{ showRewards(item.rewards) }}</span>
+              </td>
+              <td class="px-2 py-4">
+                <input type="number" v-model.number="item.sale" class="">
+              </td>
+              <td class="px-2 py-4">
+                <input type="number" v-model.number="item.unit" class=" w-[6rem]"> 抽
+              </td>
+              <td class="px-2 py-4">
+                <input type="number" v-model.number="item.pack" class="w-[6rem]"> 包
+              </td>
+              <td class="px-2 py-4">
+                <input type="number" v-model.number="item.set" class="w-[6rem]"> 袋
+              </td>
+              <td class="px-2 py-4 w-[8rem]">
+                {{ countAmount(item) }}
+              </td>
+              <td class="px-2 py-4 text-right">
+                <button class="bg-red-400 border rounded-md p-2 text-white whitespace-nowrap" @click="removeItem(index)">刪除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <button class="p-2 border bg-cyan-200 font-bold rounded-md text-cyan-800 float-right mt-4" @click="addItem()">增加</button>
+        <button class="p-2 border bg-red-200 font-bold rounded-md text-red-800 float-right mt-4 mx-2" @click="exportJson()">Export</button>
+      </div>
+
+      <ul class="border border-pink-300 rounded-md p-4 mt-4">
+        <li 
+          v-for="(item, index) in list" 
+          :key="index" 
+          class="grid grid-cols-2 w-1/2 border-b last:border-none border-pink-100" 
+          :class="{'bg-yellow-100': cheapest() == item.amount}"
+        >
+          <span class="p-2">{{item.name}}</span>
+          <span class="p-2">{{item.amount}}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</body>
+<style>
+  input {
+    padding: 0.25rem !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0.25rem;
+  }
+</style>
+<script>
+  const app = new Vue({
+  el: '#app',
+  data() {
+    return {
+      titles: ['品名', '回饋', '價錢', '抽', '包', '袋', '$$/抽', ''],
+      list: [{
+        name: null,
+        sale: 1,
+        rewards: 0.04,
+        pack: 1,
+        unit: 1,
+        set: 1,
+        amount: 0,
+        isEdit: false,
+      }]
+    }
+  },
+  methods: {
+    countAmount(item = {}) {
+      const realAmount = item.sale - (item.sale * item.rewards)
+      const unitNumber = item.pack * item.unit * item.set
+      item.amount = (realAmount / unitNumber).toFixed(4)
+      return item.amount
+    },
+    addItem() {
+      this.list.push({
+        name: null,
+        sale: 1,
+        rewards: 0.04,
+        pack: 1,
+        unit: 1,
+        set: 1,
+        amount: 0,
+      })
+    },
+    removeItem(index) {
+      this.list.splice(index, 1)
+    },
+    cheapest(){
+      const minItemAmount = Math.min(...this.list.map(item => item.amount))
+      return minItemAmount
+    },
+    exportJson() {
+      const filename = "tissue.json"
+      const jsonStr = JSON.stringify(this.list)
+      const element = document.createElement('a')
+      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(jsonStr))
+      element.setAttribute('download', filename)
+
+      element.style.display = 'none'
+      document.body.appendChild(element)
+
+      element.click()
+      document.body.removeChild(element)
+    },
+    toggleEditRewards(item){
+      item.isEdit = !item.isEdit
+    },
+    showRewards(rewards){
+      return `${rewards * 100} %`
+    }
+  },
+  async mounted (){
+    await fetch('./tissue.json')
+      .then(response => {
+       response.json()
+        .then(result => {
+          this.list = JSON.parse(JSON.stringify(result));
+        })
+      })
+    
+    this.$nextTick(()=> {
+      const inputs = document.querySelectorAll("td input")
+      inputs.forEach(item => {
+        item.addEventListener('focus', event => event.target.select())
+      })
+    })
+  }
+})
+</script>
+</html>
